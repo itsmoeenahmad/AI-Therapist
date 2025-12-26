@@ -1,0 +1,23 @@
+# Backend
+fastapi
+uvicorn
+python-multipart
+pydantic
+
+# AI/LLM
+langchain
+langchain-groq
+langgraph
+groq
+
+# External Services
+googlemaps
+twilio
+requests
+geopy
+
+# Frontend
+streamlit
+
+# Utilities
+python-dotenv
