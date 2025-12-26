@@ -241,20 +241,20 @@ def ask_mental_health_specialist(query: str) -> str:
     return query_therapeutic_model(query)
 
 # LLM setup
-llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0.3, api_key=GROQ_API_KEY)
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.3, api_key=GROQ_API_KEY)
 
 # Create the agent graph
-graph = create_agent(llm, tools, system_prompt=AGENT_PROMPT)
+graph = create_react_agent(llm, tools, prompt=AGENT_PROMPT)
 ```
 
 The `run_agent()` function:
-1. Builds the input with optional context.
-2. Invokes execution through the graph.
-3. Captures which tool was called.
-4. Captures the final response text.
-5. Returns both to the API.
+1. Builds the input with optional context
+2. Streams execution through the graph
+3. Captures which tool was called
+4. Captures the final response text
+5. Returns both to the API
 
-The `invoke` method ensures reliable execution without streaming, simplifying the process.
+Streaming lets us see each step (agent thinking, tool executing, agent responding).
 
 ---
 
