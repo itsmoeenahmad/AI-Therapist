@@ -3,18 +3,18 @@ import uuid
 import requests
 import streamlit as st
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000/ask")
+BACKEND_URL = os.getenv("BACKEND_URL", "https://federal-melosa-itsmoeenahmad-3adbcd31.koyeb.app/ask")
 
 st.set_page_config(page_title="AI Therapist", page_icon="🧠")
 
 if "user_id" not in st.session_state:
     st.session_state.user_id = str(uuid.uuid4())
 
-st.title("🧠 AI Therapist")
+st.title("AI Therapist")
 st.write("Your AI mental health companion - here to listen and support you.")
 
 st.warning(
-    "⚠️ **Disclaimer:** This is an AI assistant, not a licensed therapist or doctor. "
+    "**Disclaimer:** This is an AI assistant, not a licensed therapist or doctor. "
     "For serious mental health concerns, please consult a professional."
 )
 
@@ -48,7 +48,7 @@ if user_input:
                 else:
                     reply = "Sorry, I couldn't connect. Please try again."
             except Exception:
-                reply = "Connection error. Make sure the backend is running."
+                reply = "Connection error. Please try again later."
             
             st.write(reply)
             st.session_state.messages.append({"role": "assistant", "content": reply})

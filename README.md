@@ -1,31 +1,60 @@
 # AI Therapist
 
-An AI-powered mental health support system providing therapeutic conversations, crisis detection, therapist location services, and persistent conversation history.
+A mental health support chatbot built with FastAPI, LangGraph, and Groq. It provides therapeutic conversations, finds nearby therapists, and can trigger emergency calls when it detects crisis situations.
+
+This is a learning project. The code is intentionally kept readable over being clever.
 
 ---
 
-## Features
+## What It Does
 
-| Feature | Description |
-|---------|-------------|
-| Therapeutic Conversations | Evidence-based responses using CBT, DBT, and person-centered therapy |
-| Conversation History | MongoDB-backed chat persistence with unique user sessions |
-| Find Therapists | Locate mental health professionals via Psychology Today directory |
-| Emergency Calling | Crisis detection with automatic emergency call via Twilio (with voice message) |
-| Simple UI | Clean Streamlit chat interface |
+- Responds to mental health queries using a Groq-hosted LLM (Llama 3.3 70B)
+- Remembers conversation history per session (stored in MongoDB)
+- Finds therapists by generating Psychology Today search links
+- Calls a configured phone number during crisis situations via Twilio
 
 ---
 
-## Architecture
+## How the Agent Works
+
+The core of this project is a LangGraph ReAct agent. ReAct stands for "Reason and Act" - the LLM thinks about what to do, calls a tool if needed, then formulates a response.
+
+Here is the execution flow:
 
 ```
-User Input --> Streamlit Frontend --> FastAPI Backend --> LangGraph Agent
-                    |                       |                    |
-               [UUID Session]          [MongoDB]    +------------+------------+
-                                                    |            |            |
-                                              Therapy Tool  Location Tool  Emergency Tool
-                                              (Groq API)   (Psychology Today)  (Twilio)
+User sends message
+       |
+       v
++------------------+
+|   Agent Node     |  LLM reads the message + system prompt
+|   (LLM thinks)   |  Decides: answer directly OR call a tool
++------------------+
+       |
+       v (if tool needed)
++------------------+
+|   Tools Node     |  Executes the Python function
+|   (runs code)    |  Returns result to agent
++------------------+
+       |
+       v
++------------------+
+|   Agent Node     |  LLM reads tool output
+|   (LLM responds) |  Generates final response for user
++------------------+
+       |
+       v
+Response returned to API
 ```
+
+The agent has access to three tools:
+
+| Tool | What It Does |
+|------|--------------|
+| `ask_mental_health_specialist` | Calls Groq with a therapy-focused prompt |
+| `find_nearby_therapists_by_location` | Returns a Psychology Today search link |
+| `emergency_call_tool` | Triggers a Twilio call with a spoken message |
+
+The LLM decides which tool to call based on the user input and system prompt. For normal queries, it uses the therapy tool. For location requests like "find a therapist in NYC", it uses the location tool. For crisis messages, it uses the emergency tool.
 
 ---
 
@@ -33,187 +62,217 @@ User Input --> Streamlit Frontend --> FastAPI Backend --> LangGraph Agent
 
 ```
 ai-therapist/
-├── .env                          # Environment variables
-├── README.md                     # This documentation
-├── requirements.txt              # Python dependencies
-├── pyproject.toml               # Project metadata
+├── .env.example              # Environment variables template
 │
 ├── backend/
-│   ├── main.py                  # FastAPI entry point
+│   ├── Dockerfile            # For container deployment
+│   ├── requirements.txt
+│   ├── main.py               # FastAPI app entry point
 │   └── app/
 │       ├── api/
-│       │   ├── routes.py        # API endpoints (/ask, /health)
-│       │   └── schemas.py       # Pydantic request/response models
+│       │   ├── routes.py     # POST /ask, GET /health
+│       │   └── schemas.py    # Request/response models
 │       ├── core/
-│       │   ├── agent.py         # LangGraph ReAct agent with tools
-│       │   ├── config.py        # Environment variables and settings
-│       │   └── prompts.py       # System prompts for AI models
+│       │   ├── agent.py      # LangGraph agent setup
+│       │   ├── config.py     # Loads env vars
+│       │   └── prompts.py    # System prompts
 │       └── services/
-│           ├── database.py      # MongoDB chat history storage
-│           ├── therapy.py       # Groq API therapeutic responses
-│           ├── emergency.py     # Twilio emergency calling with TwiML
-│           └── location.py      # Psychology Today therapist search
+│           ├── database.py   # MongoDB read/write
+│           ├── therapy.py    # Groq API call
+│           ├── emergency.py  # Twilio call logic
+│           └── location.py   # Psychology Today link
 │
 └── frontend/
-    └── frontend.py              # Streamlit chat interface
+    ├── requirements.txt
+    └── frontend.py           # Streamlit chat UI
 ```
 
 ---
 
-## Installation
+## Setup
 
-### Prerequisites
-- Python 3.13+
-- Groq API Key (free at https://console.groq.com/keys)
-- MongoDB Atlas account (free tier available)
+### Requirements
 
-### Setup
+- Python 3.12+
+- Groq API key (free at console.groq.com)
+- MongoDB Atlas cluster (free tier works)
+- Twilio account (optional, for emergency calls)
 
-1. Clone and navigate to project:
+### Install
+
 ```bash
-cd "ai therapist"
-```
+git clone https://github.com/yourusername/ai-therapist.git
+cd ai-therapist
 
-2. Create virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
+# Copy and edit environment variables
+cp .env.example .env
 
-3. Install dependencies:
-```bash
+# Backend
+cd backend
+pip install -r requirements.txt
+
+# Frontend (separate terminal)
+cd ../frontend
 pip install -r requirements.txt
 ```
 
-4. Configure environment variables in `.env`:
+### Environment Variables
+
 ```env
 # Required
-GROQ_API_KEY=your_groq_api_key_here
-
-# MongoDB (Required)
-MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net/
+GROQ_API_KEY=gsk_xxxxx
+MONGODB_URL=mongodb+srv://user:pass@cluster.mongodb.net/
 MONGO_DB_NAME=ai_therapist
 MONGO_CHAT_COLLECTION=chats
 
-# Optional - Twilio for emergency calling
-TWILIO_ACCOUNT_SID=your_twilio_sid
-TWILIO_AUTH_TOKEN=your_twilio_token
+# Optional (for emergency calling)
+TWILIO_ACCOUNT_SID=ACxxxxx
+TWILIO_AUTH_TOKEN=xxxxx
 TWILIO_FROM_NUMBER=+1234567890
 EMERGENCY_CONTACT=+1234567890
 
-# Optional - Model settings
+# Optional
 THERAPEUTIC_MODEL=llama-3.3-70b-versatile
 THERAPEUTIC_TEMPERATURE=0.7
 ```
 
 ---
 
-## Running the Application
+## Running Locally
 
-### Start Backend Server
+Terminal 1 (backend):
 ```bash
 cd backend
 uvicorn main:app --reload
-# Server runs at http://localhost:8000
-# API docs at http://localhost:8000/docs
+# Runs on http://localhost:8000
 ```
 
-### Start Frontend (new terminal)
+Terminal 2 (frontend):
 ```bash
 cd frontend
 streamlit run frontend.py
-# UI opens at http://localhost:8501
+# Opens http://localhost:8501
 ```
 
 ---
 
-## API Reference
+## API
 
-### Endpoints
+### POST /ask
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/` | Welcome message and API info |
-| GET | `/health` | Health check and config validation |
-| POST | `/ask` | Main therapeutic conversation |
-| GET | `/docs` | Interactive API documentation |
+Send a message and get a response.
 
-### Request Example
-```bash
-curl -X POST http://localhost:8000/ask \
-  -H "Content-Type: application/json" \
-  -d '{"message": "I have been feeling anxious about work", "user_id": "your-unique-uuid"}'
-```
-
-### Response Example
+Request:
 ```json
 {
-  "response": "I hear that work has been causing you anxiety...",
+  "message": "I've been feeling anxious lately",
+  "user_id": "some-uuid"
+}
+```
+
+Response:
+```json
+{
+  "response": "I hear you. Anxiety can be really difficult...",
   "tool_called": "ask_mental_health_specialist",
   "status": "success"
 }
 ```
 
----
+### GET /health
 
-## AI Agent Tools
-
-The LangGraph agent has access to three tools:
-
-### 1. ask_mental_health_specialist
-- Primary tool for all emotional/psychological queries
-- Uses Groq API with therapeutic system prompt
-- Integrates CBT, DBT, and person-centered therapy approaches
-
-### 2. find_nearby_therapists_by_location
-- Generates Psychology Today search link for the specified location
-- Users can browse verified therapists with credentials, specialties, and contact info
-- Free to use, no API key required
-
-### 3. emergency_call_tool
-- Triggered for crisis situations (suicidal ideation, self-harm)
-- Places emergency call to configured contact via Twilio
-- Speaks urgent message when call is answered using TwiML
-- Falls back to crisis helpline numbers if Twilio not configured
+Returns service status and config validation.
 
 ---
 
-## Conversation History
+## Deployment
 
-Each user session gets a unique UUID that persists during the browser session. All messages are stored in MongoDB with:
+### Backend on Koyeb
 
-- `user_id` - Unique session identifier
-- `human` - User's message
-- `assistant` - AI's response
-- `timestamp` - When the message was sent
+1. Push to GitHub
+2. Create app on koyeb.com
+3. Select Dockerfile builder
+4. Set:
+   - Dockerfile location: `backend/Dockerfile`
+   - Work directory: `backend`
+   - Port: `8000`
+5. Add environment variables
+6. Deploy
 
-The agent receives previous conversation context to maintain continuity.
+### Frontend on Streamlit Cloud
+
+1. Go to share.streamlit.io
+2. Connect your repo
+3. Set main file: `frontend/frontend.py`
+4. Add secret: `BACKEND_URL = "https://your-app.koyeb.app/ask"`
+5. Deploy
 
 ---
 
-## Therapeutic Approach
+## How Conversation History Works
 
-The AI therapist (Dr. Emily) follows evidence-based practices:
+Each browser session gets a UUID (generated on first message). This ID is sent with every request.
 
-**Response Guidelines:**
-1. Acknowledge and validate feelings first
-2. Normalize the experience when appropriate
-3. Ask open-ended questions to explore root causes
-4. Offer evidence-based coping strategies
-5. Highlight strengths and resilience
+On the backend:
+1. `get_chat_history(user_id)` fetches last 20 messages from MongoDB
+2. History is formatted and prepended to the current message
+3. Agent processes with full context
+4. Response is saved via `save_message(user_id, human, assistant)`
 
-**Safety Principles:**
-- Never diagnoses conditions or recommends medications
-- Encourages professional help for serious concerns
-- Takes self-harm/suicidal ideation seriously
-- Maintains warm, professional boundaries
+The agent sees something like:
+```
+Previous conversation:
+User: I've been stressed
+Assistant: I understand. What's been causing the stress?
+
+Current message: It's work related
+```
+
+---
+
+## The Agent Code Explained
+
+In `backend/app/core/agent.py`:
+
+```python
+# Tools are regular Python functions with @tool decorator
+@tool
+def ask_mental_health_specialist(query: str) -> str:
+    return query_therapeutic_model(query)
+
+# LLM setup
+llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0.3, api_key=GROQ_API_KEY)
+
+# Create the agent graph
+graph = create_react_agent(llm, tools, prompt=AGENT_PROMPT)
+```
+
+The `run_agent()` function:
+1. Builds the input with optional context
+2. Streams execution through the graph
+3. Captures which tool was called
+4. Captures the final response text
+5. Returns both to the API
+
+Streaming lets us see each step (agent thinking, tool executing, agent responding).
+
+---
+
+## Limitations
+
+- Not a real therapist. Cannot diagnose or prescribe.
+- Context window is limited. Very long conversations may lose early context.
+- Emergency detection relies on LLM judgment - not foolproof.
+- Twilio free tier has limitations on call duration and numbers.
 
 ---
 
 ## Crisis Resources
 
-| Country | Helpline | Number |
-|---------|----------|--------|
+If you or someone you know is in crisis:
+
+| Country | Service | Number |
+|---------|---------|--------|
 | USA | Suicide & Crisis Lifeline | 988 |
 | UK | Samaritans | 116 123 |
 | India | iCall | 9152987821 |
@@ -222,17 +281,25 @@ The AI therapist (Dr. Emily) follows evidence-based practices:
 
 ---
 
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | FastAPI |
+| Agent | LangGraph (ReAct pattern) |
+| LLM | Groq (Llama 3.3 70B) |
+| Database | MongoDB Atlas |
+| Frontend | Streamlit |
+| Calls | Twilio |
+
+---
+
 ## Disclaimer
 
-This is an AI support tool and does not replace professional mental health care. The AI:
-- Does not diagnose mental health conditions
-- Does not provide medical advice or medication recommendations
-- Should not be used as a substitute for licensed therapy
-
-For serious mental health concerns, please consult a licensed professional. If you are in crisis, contact emergency services immediately.
+This is an educational project. It is not a substitute for professional mental health care. The AI cannot diagnose conditions or provide medical advice. If you are struggling, please reach out to a licensed professional or crisis service.
 
 ---
 
 ## License
 
-For educational and personal use only. Please use responsibly.
+MIT. Use responsibly.
