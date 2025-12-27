@@ -136,6 +136,16 @@ THERAPEUTIC_MODEL=llama-3.3-70b-versatile
 THERAPEUTIC_TEMPERATURE=0.7
 ```
 
+Frontend-specific environment variable
+
+```env
+# Frontend (required for the Streamlit UI)
+BACKEND_URL=https://your-app.koyeb.app/ask
+```
+
+Notes:
+- The frontend reads environment variables from the running environment. When running locally you can either run Streamlit from the project root so a top-level `.env` is found, or explicitly set `BACKEND_URL` in your shell (see "Running Locally").
+
 ---
 
 ## Running Locally
@@ -152,6 +162,17 @@ Terminal 2 (frontend):
 cd frontend
 streamlit run frontend.py
 # Opens http://localhost:8501
+```
+
+Alternative (recommended to ensure the frontend picks up the top-level `.env`):
+
+```bash
+# From the project root (so frontend can load ../.env)
+streamlit run frontend/frontend.py
+
+# Or set the value explicitly in your shell before running:
+export BACKEND_URL=https://your-app.koyeb.app/ask
+streamlit run frontend/frontend.py
 ```
 
 ---
@@ -206,6 +227,10 @@ Returns service status and config validation.
 3. Set main file: `frontend/frontend.py`
 4. Add secret: `BACKEND_URL = "https://your-app.koyeb.app/ask"`
 5. Deploy
+
+Notes:
+- Make sure the secret value includes the full URL with `https://` or `http://`. Streamlit will expose this value to the app as an environment variable.
+- Do NOT hardcode the live backend URL in the repository. Use Streamlit secrets (or platform env vars) instead.
 
 ---
 
