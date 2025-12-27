@@ -2,8 +2,13 @@ import os
 import uuid
 import requests
 import streamlit as st
+from dotenv import load_dotenv
 
-BACKEND_URL = os.getenv("BACKEND_URL", "https://federal-melosa-itsmoeenahmad-3adbcd31.koyeb.app/ask")
+load_dotenv()
+BACKEND_URL = os.getenv("BACKEND_URL")
+if not BACKEND_URL:
+    st.error("BACKEND_URL environment variable is not set. Please configure it for the app to work.")
+    st.stop()
 
 st.set_page_config(page_title="AI Therapist", page_icon="🧠")
 
