@@ -93,7 +93,7 @@ ai-therapist/
 
 ### Requirements
 
-- Python 3.12+
+- Python 3.13
 - Groq API key (free at console.groq.com)
 - MongoDB Atlas cluster (free tier works)
 - Twilio account (optional, for emergency calls)
@@ -229,7 +229,6 @@ Returns service status and config validation.
 5. Deploy
 
 Notes:
-- Make sure the secret value includes the full URL with `https://` or `http://`. Streamlit will expose this value to the app as an environment variable.
 - Do NOT hardcode the live backend URL in the repository. Use Streamlit secrets (or platform env vars) instead.
 
 ---
